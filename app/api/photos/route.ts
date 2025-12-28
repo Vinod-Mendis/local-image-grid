@@ -24,47 +24,40 @@ export async function GET() {
 
         return {
           name: file,
-          birthtime: stats.birthtime.getTime(),
           url: `/photos/${file}`,
         };
       })
     );
 
-    // Filter nulls and sort by creation time
-    const validPhotos = photoData
-      .filter((p) => p !== null)
-      .sort((a, b) => a.birthtime - b.birthtime);
-
+    // Filter nulls
+    const validPhotos = photoData.filter((p) => p !== null);
     const totalPhotos = validPhotos.length;
 
-    // Calculate current batch
-    // 0-15 photos: no batch
-    // 16-31 photos: batch 0 (photos 1-16)
-    // 32-47 photos: batch 1 (photos 17-32)
-    // 48-63 photos: batch 2 (photos 33-48)
+    // Return empty if less than 16 photos
     if (totalPhotos < 16) {
       return NextResponse.json({
-        batch: null,
         photos: [],
         total: totalPhotos,
       });
     }
 
-    const currentBatch = Math.floor(totalPhotos / 16) - 1;
-    const startIdx = currentBatch * 16;
-    const endIdx = startIdx + 16;
+    // Shuffle array using Fisher-Yates algorithm
+    const shuffled = [...validPhotos];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
 
-    const batchPhotos = validPhotos.slice(startIdx, endIdx).map((p) => p.url);
+    // Take first 16 from shuffled array
+    const randomPhotos = shuffled.slice(0, 16).map((p) => p.url);
 
     return NextResponse.json({
-      batch: currentBatch,
-      photos: batchPhotos,
+      photos: randomPhotos,
       total: totalPhotos,
     });
   } catch (error) {
     console.error("Error reading photos:", error);
     return NextResponse.json({
-      batch: null,
       photos: [],
       total: 0,
     });

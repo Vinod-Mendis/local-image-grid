@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PhotoResponse {
-  batch: number | null;
   photos: string[];
   total: number;
 }
 
 export default function PhotoGrid() {
-  const [currentBatch, setCurrentBatch] = useState<number | null>(null);
+  const FETCH_INTERVAL = 3000; // Change this value (in milliseconds)
+
   const [photos, setPhotos] = useState<string[]>([]);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [total, setTotal] = useState(0);
-  const FETCH_INTERVAL = 5000;
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -23,18 +22,7 @@ export default function PhotoGrid() {
         const data: PhotoResponse = await res.json();
 
         setTotal(data.total);
-
-        // Batch changed - trigger transition
-        if (data.batch !== currentBatch && data.photos.length > 0) {
-          setIsTransitioning(true);
-
-          setTimeout(() => {
-            setCurrentBatch(data.batch);
-            setPhotos(data.photos);
-            setIsTransitioning(false);
-          }, 400);
-        } else if (data.batch === currentBatch) {
-          // Same batch, just update photos
+        if (data.photos.length > 0) {
           setPhotos(data.photos);
         }
       } catch (error) {
@@ -45,7 +33,7 @@ export default function PhotoGrid() {
     fetchPhotos();
     const interval = setInterval(fetchPhotos, FETCH_INTERVAL);
     return () => clearInterval(interval);
-  }, [currentBatch]);
+  }, []);
 
   if (photos.length === 0) {
     return (
@@ -92,16 +80,11 @@ export default function PhotoGrid() {
               Event Gallery
             </h1>
             <div className="flex items-center gap-3 text-sm">
-              <p className="text-slate-400">
-                Batch {currentBatch !== null ? currentBatch + 1 : "—"}
-              </p>
+              <p className="text-slate-400">Random Selection</p>
               <span className="text-slate-600">•</span>
-              <p className="text-slate-400">
-                Showing {(currentBatch ?? 0) * 16 + 1}–
-                {(currentBatch ?? 0) * 16 + 16}
+              <p className="text-blue-400 font-semibold">
+                {total} total photos
               </p>
-              <span className="text-slate-600">•</span>
-              <p className="text-blue-400 font-semibold">{total} total</p>
             </div>
           </div>
 
@@ -113,52 +96,40 @@ export default function PhotoGrid() {
 
         {/* Grid - Takes remaining space */}
         <div className="flex-1 min-h-0">
-          <div
-            className={`h-full grid grid-cols-4 gap-3 transition-all duration-400 ${
-              isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
-            }`}
-          >
-            {photos.map((photo, idx) => (
-              <div
-                key={`${currentBatch}-${idx}`}
-                className="group relative aspect-square bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/20"
-                style={{
-                  animationDelay: `${idx * 30}ms`,
-                  animation: isTransitioning ? "none" : "fadeIn 0.5s ease-out",
-                }}
-              >
-                <Image
-                  src={photo}
-                  alt={`Photo ${idx + 1}`}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                />
+          <div className="h-full grid grid-cols-4 gap-3">
+            <AnimatePresence mode="wait">
+              {photos.map((photo, idx) => (
+                <motion.div
+                  key={photo}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: idx * 0.03,
+                  }}
+                  className="group relative aspect-square bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/20"
+                >
+                  <Image
+                    src={photo}
+                    alt={`Photo ${idx + 1}`}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="absolute bottom-3 left-3 text-white font-semibold text-sm">
-                    #{(currentBatch ?? 0) * 16 + idx + 1}
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute bottom-3 left-3 text-white font-semibold text-sm">
+                      #{idx + 1}
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </main>
   );
 }
