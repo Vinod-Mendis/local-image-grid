@@ -25,6 +25,7 @@ export default function PhotoCenterLoop() {
   const [loading, setLoading] = useState(true);
   const [preloadingImages, setPreloadingImages] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [gridPhotos, setGridPhotos] = useState<NumberedPhoto[]>([]);
 
   const photosRef = useRef<NumberedPhoto[]>([]);
   const photoTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -115,22 +116,36 @@ export default function PhotoCenterLoop() {
   const startPhotoLoop = () => {
     if (photos.length === 0) return;
 
-    if (photoTimerRef.current) {
-      clearTimeout(photoTimerRef.current);
-    }
+    if (photoTimerRef.current) clearTimeout(photoTimerRef.current);
 
     photoTimerRef.current = setTimeout(() => {
-      setCurrentPhotoIndex((prevIndex) => {
-        const nextIndex = prevIndex + 1;
+      // Check if we are at the end of the batch
+      if (currentPhotoIndex >= photos.length - 1) {
+        if (nextPhotos.length > 0) {
+          // CRITICAL: Update both at once to prevent the "flicker"
+          // We use functional updates or batching to ensure index 0
+          // applies to the NEW photos immediately.
+          setPhotos(nextPhotos);
+          setCurrentPhotoIndex(0);
 
-        // If we've reached the end of current batch, transition to next
-        if (nextIndex >= photos.length) {
-          transitionToNextBatch();
-          return 0;
+          setNextPhotos([]);
+          batchNumberRef.current += 1;
+          offsetRef.current += 8;
+        } else {
+          // Fallback: Loop current batch if next isn't ready
+          setCurrentPhotoIndex(0);
+        }
+      } else {
+        // Normal progression
+        const nextIndex = currentPhotoIndex + 1;
+
+        // Trigger background grid swap early (when moving to the last photo)
+        if (nextIndex === photos.length - 1) {
+          swapGridToNextBatch();
         }
 
-        return nextIndex;
-      });
+        setCurrentPhotoIndex(nextIndex);
+      }
     }, PHOTO_DURATION);
   };
 
@@ -185,10 +200,9 @@ export default function PhotoCenterLoop() {
         if (fetchedPhotos.length > 0) {
           await preloadImages(fetchedPhotos);
           setPhotos(fetchedPhotos);
+          setGridPhotos(fetchedPhotos); // Set initial grid
           setCurrentPhotoIndex(0);
           offsetRef.current = 0;
-
-          // Start scheduling next batch fetches
           scheduleNextBatchFetch();
         }
       } finally {
@@ -207,6 +221,17 @@ export default function PhotoCenterLoop() {
       if (fetchTimerRef.current) clearTimeout(fetchTimerRef.current);
     };
   }, []);
+
+  // function to swap the grid early
+  const swapGridToNextBatch = () => {
+    if (nextPhotos.length > 0) {
+      setIsTransitioning(true); // Start fade out
+      setTimeout(() => {
+        setGridPhotos(nextPhotos); // Swap the background only
+        setIsTransitioning(false); // Fade back in
+      }, 500);
+    }
+  };
 
   if (loading) {
     return (
@@ -280,7 +305,7 @@ export default function PhotoCenterLoop() {
         }`}
       >
         <div className="h-full grid grid-cols-4 gap-3">
-          {photos.map((photo, idx) => (
+          {gridPhotos.map((photo, idx) => (
             <div
               key={photo.url}
               className="relative aspect-[3/4] bg-slate-800/50 rounded-2xl overflow-hidden"
