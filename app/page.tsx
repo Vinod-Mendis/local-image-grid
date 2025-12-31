@@ -18,6 +18,7 @@ export default function PhotoGrid() {
   const [animatingIndex, setAnimatingIndex] = useState<number>(-1);
   const [centerPhoto, setCenterPhoto] = useState<string | null>(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -31,14 +32,15 @@ export default function PhotoGrid() {
           if (isFirstLoad) {
             setPhotos(data.photos);
             setIsFirstLoad(false);
-          } else {
-            // On subsequent fetches, animate each photo
-            const newPhotos = data.photos;
+          } else if (!isAnimating) {
+            // On subsequent fetches, animate current photos first, then update
+            setIsAnimating(true);
+            const photosToAnimate = [...photos]; // Copy current photos before they change
 
             const showSequence = async () => {
-              for (let i = 0; i < newPhotos.length; i++) {
+              for (let i = 0; i < photosToAnimate.length; i++) {
                 setAnimatingIndex(i);
-                setCenterPhoto(newPhotos[i]);
+                setCenterPhoto(photosToAnimate[i]);
 
                 // Wait for animation + pause + animation out
                 await new Promise((resolve) =>
@@ -52,7 +54,8 @@ export default function PhotoGrid() {
               setAnimatingIndex(-1);
               setCenterPhoto(null);
               // Update photos after all animations complete
-              setPhotos(newPhotos);
+              setPhotos(data.photos);
+              setIsAnimating(false);
             };
 
             showSequence();
@@ -66,7 +69,7 @@ export default function PhotoGrid() {
     fetchPhotos();
     const interval = setInterval(fetchPhotos, FETCH_INTERVAL);
     return () => clearInterval(interval);
-  }, [isFirstLoad]);
+  }, [isFirstLoad, isAnimating, photos]);
 
   if (photos.length === 0) {
     return (
