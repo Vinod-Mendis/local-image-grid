@@ -11,6 +11,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    // !Read from ENV on the server.
+    // We parse it here so the API knows the "Expected" batch size.
+    const ENV_BATCH_SIZE =
+      Number(process.env.NEXT_PUBLIC_PHOTOS_PER_BATCH) || 10;
+
     const files = await fs.readdir(PHOTOS_PATH);
 
     // Get file stats and filter valid images
@@ -39,7 +44,7 @@ export async function GET(request: Request) {
     const totalPhotos = validPhotos.length;
 
     // Return empty if less than 8 photos
-    if (totalPhotos < 10) {
+    if (totalPhotos < ENV_BATCH_SIZE) {
       return NextResponse.json({
         photos: [],
         total: totalPhotos,
@@ -53,7 +58,7 @@ export async function GET(request: Request) {
 
     // Take 8 photos starting from offset, wrapping around if needed
     const selectedPhotos = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < ENV_BATCH_SIZE; i++) {
       const index = (offset + i) % sortedPhotos.length;
       selectedPhotos.push(sortedPhotos[index].url);
     }

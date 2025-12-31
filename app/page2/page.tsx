@@ -16,7 +16,8 @@ interface NumberedPhoto {
 
 export default function PhotoCenterLoop() {
   const PHOTO_DURATION = 8000; // 8 seconds per photo
-  const PHOTOS_PER_BATCH = 10; // !<-- Changed the grid when this number changes
+  const PHOTOS_PER_BATCH =
+    Number(process.env.NEXT_PUBLIC_PHOTOS_PER_BATCH) || 10; // !<-- Changed the grid when this number changes
   const FETCH_INTERVAL = PHOTOS_PER_BATCH * PHOTO_DURATION; // Fetch before current batch ends
 
   const [photos, setPhotos] = useState<NumberedPhoto[]>([]);
