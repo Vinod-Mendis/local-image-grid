@@ -34,7 +34,7 @@ export async function GET() {
     const totalPhotos = validPhotos.length;
 
     // Return empty if less than 16 photos
-    if (totalPhotos < 16) {
+    if (totalPhotos < 8) {
       return NextResponse.json({
         photos: [],
         total: totalPhotos,
@@ -49,7 +49,7 @@ export async function GET() {
     }
 
     // Take first 16 from shuffled array
-    const randomPhotos = shuffled.slice(0, 16).map((p) => p.url);
+    const randomPhotos = shuffled.slice(0, 8).map((p) => p.url);
 
     return NextResponse.json({
       photos: randomPhotos,

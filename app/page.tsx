@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PhotoResponse {
@@ -10,10 +9,15 @@ interface PhotoResponse {
 }
 
 export default function PhotoGrid() {
-  const FETCH_INTERVAL = 3000; // Change this value (in milliseconds)
+  const FETCH_INTERVAL = 30000; // 30 seconds
+  const PAUSE_DURATION = 2000; // 2 seconds pause in center
+  const ANIMATION_DURATION = 500; // 0.5 seconds for scale animation
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
+  const [animatingIndex, setAnimatingIndex] = useState<number>(-1);
+  const [centerPhoto, setCenterPhoto] = useState<string | null>(null);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -23,7 +27,36 @@ export default function PhotoGrid() {
 
         setTotal(data.total);
         if (data.photos.length > 0) {
-          setPhotos(data.photos);
+          // If first load, just show photos immediately
+          if (isFirstLoad) {
+            setPhotos(data.photos);
+            setIsFirstLoad(false);
+          } else {
+            // On subsequent fetches, animate each photo
+            const newPhotos = data.photos;
+
+            const showSequence = async () => {
+              for (let i = 0; i < newPhotos.length; i++) {
+                setAnimatingIndex(i);
+                setCenterPhoto(newPhotos[i]);
+
+                // Wait for animation + pause + animation out
+                await new Promise((resolve) =>
+                  setTimeout(
+                    resolve,
+                    ANIMATION_DURATION + PAUSE_DURATION + ANIMATION_DURATION
+                  )
+                );
+              }
+
+              setAnimatingIndex(-1);
+              setCenterPhoto(null);
+              // Update photos after all animations complete
+              setPhotos(newPhotos);
+            };
+
+            showSequence();
+          }
         }
       } catch (error) {
         console.error("Error fetching photos:", error);
@@ -33,7 +66,7 @@ export default function PhotoGrid() {
     fetchPhotos();
     const interval = setInterval(fetchPhotos, FETCH_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [isFirstLoad]);
 
   if (photos.length === 0) {
     return (
@@ -51,12 +84,12 @@ export default function PhotoGrid() {
               Waiting for Photos
             </h1>
             <p className="text-slate-400 text-lg">
-              {total > 0 ? `${total} of 16 photos collected` : "No photos yet"}
+              {total > 0 ? `${total} of 8 photos collected` : "No photos yet"}
             </p>
           </div>
 
           <div className="flex gap-2 justify-center mt-8">
-            {Array.from({ length: 16 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
@@ -95,27 +128,28 @@ export default function PhotoGrid() {
         </div>
 
         {/* Grid - Takes remaining space */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 relative">
           <div className="h-full grid grid-cols-4 gap-3">
             <AnimatePresence mode="popLayout">
               {photos.map((photo, idx) => (
                 <motion.div
                   key={photo}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{
+                    opacity: animatingIndex === idx ? 0.3 : 1,
+                    scale: 1,
+                  }}
+                  exit={{ opacity: 0, scale: 0.8 }}
                   transition={{
-                    duration: 0.5,
-                    delay: idx * 0.03,
+                    duration: 0.3,
+                    delay: isFirstLoad ? idx * 0.05 : 0,
                   }}
                   className="group relative aspect-square bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/20"
                 >
-                  <Image
+                  <img
                     src={photo}
                     alt={`Photo ${idx + 1}`}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
 
                   {/* Overlay */}
@@ -128,6 +162,32 @@ export default function PhotoGrid() {
               ))}
             </AnimatePresence>
           </div>
+
+          {/* Center Photo Display */}
+          <AnimatePresence>
+            {centerPhoto && (
+              <motion.div
+                key={centerPhoto}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{
+                  duration: ANIMATION_DURATION / 1000,
+                  ease: "easeOut",
+                }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
+              >
+                <div className="relative w-96 h-96 rounded-3xl overflow-hidden shadow-2xl border-4 border-blue-500">
+                  <img
+                    src={centerPhoto}
+                    alt="Center display"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </main>
