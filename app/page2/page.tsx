@@ -380,9 +380,9 @@ export default function PhotoCenterLoop() {
           <img
             src={currentPhoto.url}
             alt={`Photo ${currentPhotoIndex + 1}`}
-            className="w-full h-full object-cover rounded-3xl shadow-2xl border-4 border-blue-500/50"
+            className="w-full h-full object-cover rounded-3xl border-4 border-blue-500/50"
             style={{
-              filter: "drop-shadow(0 0 30px rgba(59, 130, 246, 0.5))",
+              // filter: "drop-shadow(0 0 30px rgba(59, 130, 246, 0.5))",
             }}
           />
           {/* Large image number overlay */}
