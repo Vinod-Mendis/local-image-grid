@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const totalPhotos = validPhotos.length;
 
     // Return empty if less than 8 photos
-    if (totalPhotos < 8) {
+    if (totalPhotos < 10) {
       return NextResponse.json({
         photos: [],
         total: totalPhotos,
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
     // Take 8 photos starting from offset, wrapping around if needed
     const selectedPhotos = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       const index = (offset + i) % sortedPhotos.length;
       selectedPhotos.push(sortedPhotos[index].url);
     }
