@@ -122,13 +122,12 @@ export default function PhotoCenterLoop() {
       // Check if we are at the end of the batch
       if (currentPhotoIndex >= photos.length - 1) {
         if (nextPhotos.length > 0) {
-          // CRITICAL: Update both at once to prevent the "flicker"
-          // We use functional updates or batching to ensure index 0
-          // applies to the NEW photos immediately.
-          setPhotos(nextPhotos);
-          setCurrentPhotoIndex(0);
-
+          // Use React 18's automatic batching with flushSync alternative
+          // Update everything in a single render cycle
+          const newPhotos = nextPhotos;
+          setPhotos(newPhotos);
           setNextPhotos([]);
+          setCurrentPhotoIndex(0);
           batchNumberRef.current += 1;
           offsetRef.current += 8;
         } else {
@@ -148,7 +147,6 @@ export default function PhotoCenterLoop() {
       }
     }, PHOTO_DURATION);
   };
-
   // Schedule next batch fetch
   const scheduleNextBatchFetch = () => {
     if (fetchTimerRef.current) {
@@ -327,10 +325,10 @@ export default function PhotoCenterLoop() {
       {/* Photo Container with smooth animation */}
       <div className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
         <div
-          key={currentPhoto.url}
+          key={`${batchNumberRef.current}-${currentPhotoIndex}`}
           className="relative max-w-[48vh]  aspect-3/4 w-full  flex items-center justify-center overflow-hidden"
           style={{
-            animation: `photoReveal ${PHOTO_DURATION}ms ease-in-out infinite`,
+            animation: `photoReveal ${PHOTO_DURATION}ms ease-in-out forwards`,
           }}
         >
           <img
