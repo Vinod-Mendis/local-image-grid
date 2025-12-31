@@ -59,7 +59,7 @@ export default function PhotoCenterLoop() {
   // Fetch photos from API
   const fetchPhotos = async (offset: number = 0) => {
     try {
-      const res = await fetch(`/api/photos?offset=${offset}`);
+      const res = await fetch(`/api/photos-order?offset=${offset}`);
       const data: PhotoResponse = await res.json();
 
       setTotal(data.total);
@@ -68,7 +68,7 @@ export default function PhotoCenterLoop() {
         const numberedPhotos = data.photos.map((url, index) => ({
           url,
           number: offset + index + 1,
-          timestamp: Date.now() + index
+          timestamp: Date.now() + index,
         }));
         return numberedPhotos;
       }
@@ -84,11 +84,13 @@ export default function PhotoCenterLoop() {
     console.log("Prefetching next batch...");
     const nextOffset = offsetRef.current + 8;
     const fetchedPhotos = await fetchPhotos(nextOffset);
-    
+
     if (fetchedPhotos.length > 0) {
       await preloadImages(fetchedPhotos);
       setNextPhotos(fetchedPhotos);
-      console.log(`Next batch of ${fetchedPhotos.length} photos ready (offset: ${nextOffset})`);
+      console.log(
+        `Next batch of ${fetchedPhotos.length} photos ready (offset: ${nextOffset})`
+      );
     }
   };
 
@@ -97,7 +99,7 @@ export default function PhotoCenterLoop() {
     if (nextPhotos.length > 0) {
       console.log("Transitioning to next batch");
       setIsTransitioning(true);
-      
+
       setTimeout(() => {
         setPhotos(nextPhotos);
         setNextPhotos([]);
@@ -120,13 +122,13 @@ export default function PhotoCenterLoop() {
     photoTimerRef.current = setTimeout(() => {
       setCurrentPhotoIndex((prevIndex) => {
         const nextIndex = prevIndex + 1;
-        
+
         // If we've reached the end of current batch, transition to next
         if (nextIndex >= photos.length) {
           transitionToNextBatch();
           return 0;
         }
-        
+
         return nextIndex;
       });
     }, PHOTO_DURATION);
@@ -139,19 +141,24 @@ export default function PhotoCenterLoop() {
     }
 
     // Fetch next batch 16 seconds before current batch ends (2 photos before end)
-    const fetchTiming = FETCH_INTERVAL - (PHOTO_DURATION * 2);
-    
+    const fetchTiming = FETCH_INTERVAL - PHOTO_DURATION * 2;
+
     fetchTimerRef.current = setTimeout(() => {
       prefetchNextBatch();
       scheduleNextBatchFetch(); // Schedule next fetch
     }, fetchTiming);
-    
+
     console.log(`Next batch will be fetched in ${fetchTiming / 1000} seconds`);
   };
 
   // Handle photo transitions
   useEffect(() => {
-    if (photos.length > 0 && !loading && !preloadingImages && !isTransitioning) {
+    if (
+      photos.length > 0 &&
+      !loading &&
+      !preloadingImages &&
+      !isTransitioning
+    ) {
       startPhotoLoop();
     }
 
@@ -160,7 +167,13 @@ export default function PhotoCenterLoop() {
         clearTimeout(photoTimerRef.current);
       }
     };
-  }, [currentPhotoIndex, photos.length, loading, preloadingImages, isTransitioning]);
+  }, [
+    currentPhotoIndex,
+    photos.length,
+    loading,
+    preloadingImages,
+    isTransitioning,
+  ]);
 
   // Initial fetch
   useEffect(() => {
@@ -174,7 +187,7 @@ export default function PhotoCenterLoop() {
           setPhotos(fetchedPhotos);
           setCurrentPhotoIndex(0);
           offsetRef.current = 0;
-          
+
           // Start scheduling next batch fetches
           scheduleNextBatchFetch();
         }
@@ -261,16 +274,16 @@ export default function PhotoCenterLoop() {
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
       {/* Background blur effect with smooth transition */}
-      <div 
-        className={`absolute inset-0 p-4 blur-2xl opacity-30 z-0 transition-opacity duration-500 ${
-          isTransitioning ? 'opacity-0' : 'opacity-30'
+      <div
+        className={`absolute inset-0 p-4  opacity-30 z-0 transition-opacity duration-500 ${
+          isTransitioning ? "opacity-0" : "opacity-30"
         }`}
       >
         <div className="h-full grid grid-cols-4 gap-3">
           {photos.map((photo, idx) => (
             <div
               key={photo.url}
-              className="relative aspect-square bg-slate-800/50 rounded-2xl overflow-hidden"
+              className="relative aspect-[3/4] bg-slate-800/50 rounded-2xl overflow-hidden"
             >
               <img
                 src={photo.url}
@@ -290,7 +303,7 @@ export default function PhotoCenterLoop() {
       <div className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden">
         <div
           key={currentPhoto.url}
-          className="relative max-w-[64vh] max-h-[64vh] aspect-square w-full h-full flex items-center justify-center overflow-hidden"
+          className="relative max-w-[48vh]  aspect-3/4 w-full  flex items-center justify-center overflow-hidden"
           style={{
             animation: `photoReveal ${PHOTO_DURATION}ms ease-in-out infinite`,
           }}
@@ -312,7 +325,8 @@ export default function PhotoCenterLoop() {
               Image #{currentPhoto.number}
             </span>
             <span className="text-xl opacity-90 drop-shadow-lg text-white mt-2">
-              {currentPhotoIndex + 1} of {photos.length} | Batch #{batchNumberRef.current}
+              {currentPhotoIndex + 1} of {photos.length} | Batch #
+              {batchNumberRef.current}
             </span>
           </div>
         </div>
